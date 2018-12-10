@@ -118,7 +118,7 @@ dmypy.json
 data
 
 #model
-result
+models
 
 #notebook
 *.ipynb_checkpoints
