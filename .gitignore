@@ -123,3 +123,4 @@ models
 #notebook
 *.ipynb_checkpoints
 *.ipynb
+notebook

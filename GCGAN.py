@@ -6,14 +6,14 @@ from torch.utils.data import DataLoader
 from torchvision import transforms, utils
 
 import utils
-from dataloader import MovieLensDataset, ToTensor
+from dataloader import MovieLensDataset, ToTensor, random_split
 from network import generator, discriminator
 
 
 class GCGAN(object):
     def __init__(self, args, device):
         # parameters
-        self.epoch = args.epoch
+        self.epoch = args.epochs
         self.batch_size = args.batch_size
         self.save_dir = args.save_dir
         self.result_dir = args.result_dir
@@ -32,16 +32,23 @@ class GCGAN(object):
                                     transform=transforms.Compose([
                                         ToTensor()
                                     ]))
-
-        self.u_feature_num = dataset[0]['u_feature'].shape[0]
-        self.v_feature_num = dataset[0]['v_feature'].shape[1]
+        dataset_num = len(dataset)
+        train_num = int(dataset_num*0.8)
+        train_dataset, test_dataset = random_split(dataset, [train_num, dataset_num-train_num])
 
         # load dataset
-        self.data_loader = DataLoader(dataset,
+        self.train_loader = DataLoader(train_dataset,
                                     batch_size=self.batch_size,
                                     shuffle=True,
                                     num_workers=self.num_worker)
+        self.test_loader = DataLoader(test_dataset,
+                                    batch_size=len(dataset),
+                                    shuffle=True,
+                                    num_workers=self.num_worker)
+
         data = dataset[0]['u_perchase']
+        self.u_feature_num = dataset[0]['u_feature'].shape[0]
+        self.v_feature_num = dataset[0]['v_feature'].shape[1]
     
         # networks init
         self.G = generator(input_dim=self.z_dim,
@@ -60,6 +67,7 @@ class GCGAN(object):
         self.G_optimizer = optim.SGD(self.G.parameters(), lr=args.lrG)
         self.D_optimizer = optim.SGD(self.D.parameters(), lr=args.lrD)
         self.BCE_loss = nn.BCELoss().to(self.device)
+        self.MSE_loss = nn.MSELoss().to(self.device)
 
 
         print('---------- Networks architecture -------------')
@@ -85,8 +93,8 @@ class GCGAN(object):
             self.G.train()
             epoch_start_time = time.time()
 
-            for iter, sample in enumerate(self.data_loader):
-                if iter == self.data_loader.dataset.__len__() // self.batch_size:
+            for iter, sample in enumerate(self.train_loader):
+                if iter == self.train_loader.dataset.__len__() // self.batch_size:
                     break
                 
                 perchase = sample['u_perchase'].to(self.device)
@@ -127,7 +135,7 @@ class GCGAN(object):
                 # -----------------output status---------------------------
                 if ((iter + 1) % 10) == 0:
                     print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
-                        ((epoch + 1), (iter + 1), self.data_loader.dataset.__len__() // self.batch_size, D_loss.item(), G_loss.item()))
+                        ((epoch + 1), (iter + 1), self.train_loader.dataset.__len__() // self.batch_size, D_loss.item(), G_loss.item()))
                     print(torch.min(G__perchase), torch.max(G__perchase))
                     
 
@@ -137,42 +145,41 @@ class GCGAN(object):
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
                 self.epoch, self.train_hist['total_time'][0]))
 
-
-        print("Training finish!... save training results")
-
         utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
         self.save()
-        
+    
+    def valid(self):
+        pass
 
     # Evaluation
     def eval(self):
+        self.G.eval()
         self.load()
-        self.mse = 0
-        self.rmse = 0
-        for iter, sample in enumerate(self.data_loader):
-            real_perchase = sample['u_perchase']
-            feature = sample['u_feature']
+        mse = 0
+        rmse = 0
+        with torch.no_grad():
+            for iter, sample in enumerate(self.test_loader):
+                if iter == self.test_loader.dataset.__len__() // self.batch_size:
+                    break
 
-            if iter == self.data_loader.dataset.__len__() // self.batch_size:
-                break
-            if(self.z_dim == 0):
-                z_ = torch.zeros(0, 0)
-            if self.gpu_mode:
-                real_perchase, feature, z_ = real_perchase.cuda(), feature.cuda(), z_.cuda()
+                real_perchase = sample['u_perchase'].to(self.device)
+                u_feature = sample['u_feature'].to(self.device)
+                z_ = torch.zeros(0, 0).to(self.device)
 
-            # Generate Fake Prechase Vector
-            fake_perchase = self.G(z_, feature)
+                # Generate Fake Prechase Vector
+                fake_perchase = self.G(z_, u_feature)
 
-            '''RMES'''
-            # masking perchase vector
-            mask_r = (real_perchase > 0).float()
-            mask_f = (fake_perchase > 0).float()
+                # masking perchase vector
+                mask_r = (real_perchase > 0).float().to(self.device)
+                mask_f = (fake_perchase > 0).float().to(self.device)
+                
+                mse += self.MSE_loss(fake_perchase*mask_r, real_perchase*mask_f)
+                rmse += torch.sqrt(self.MSE_loss(fake_perchase*mask_r, real_perchase*mask_f))
 
-            mse = nn.MSELoss()
-            self.mse += mse(fake_perchase*mask_r, real_perchase*mask_f)
-            self.rmse += torch.sqrt(mse(fake_perchase*mask_r, real_perchase*mask_f))
+                utils.predict_plot(fake_perchase.cpu().numpy(), os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name+'_fake')
+                utils.predict_plot(real_perchase.cpu().numpy(), os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name+'_real')
         
-        print("MSE:{}\nRMSE:{}".format(self.mse, self.rmse))
+            print("MSE:{}\nRMSE:{}".format(mse, rmse))
 
 
     def save(self):
@@ -192,4 +199,5 @@ class GCGAN(object):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
 
         self.G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_G.pkl')))
+        #elf.G.load_state_dict(torch.load('../CFGAN/models/ml_100k/CFGAN/CFGAN_G.pkl'))
         self.D.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl')))

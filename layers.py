@@ -25,14 +25,15 @@ class BipertiteGraphConvolution(nn.Module):
             M_r[i] = adj == i+1
         M_r_t = torch.transpose(M_r, 1, 2)
         D_u = torch.diag(torch.reciprocal(torch.sum(adj > 0, dim=1, dtype=torch.float)))
-        D_u[D_u == float("Inf")] = 0
         D_v = torch.diag(torch.reciprocal(torch.sum(adj > 0, dim=0, dtype=torch.float)))
+        D_u[D_u == float("Inf")] = 0
         D_v[D_v == float("Inf")] = 0
         output_u = torch.zeros(D_u.shape[0], self.weight_u.shape[1], dtype=torch.float, device=adj.device)
         output_v = torch.zeros(D_v.shape[0], self.weight_v.shape[1], dtype=torch.float, device=adj.device)
         for i in range(self.rating):
             output_u = output_u + torch.mm(torch.mm(torch.mm(D_u, M_r[i]), v_feature), self.weight_u)
             output_v = output_v + torch.mm(torch.mm(torch.mm(D_v, M_r_t[i]), u_feature), self.weight_v)
+            
         return F.relu(output_u), F.relu(output_v)
 
 
