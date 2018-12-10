@@ -5,6 +5,7 @@ import scipy.misc
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import seaborn as sns
 from torchvision import datasets, transforms
 
 
@@ -38,6 +39,13 @@ def loss_plot(hist, path = 'Train_hist.png', model_name = ''):
 
     plt.savefig(path)
 
+    plt.close()
+
+def predict_plot(matrix, path, model_name=''):
+    plt.figure(figsize=(25, 15)) 
+    sns.heatmap(matrix)
+    path = os.path.join(path, model_name + '_heatmap.png')
+    plt.savefig(path)
     plt.close()
 
 def initialize_weights(net):

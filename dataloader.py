@@ -6,7 +6,7 @@ import pandas as pd
 
 import torch
 from data_utiles import download_dataset, map_data
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, Subset
 
 
 class MovieLensDataset(Dataset):
@@ -303,3 +303,18 @@ class ToTensor(object):
         return {'u_perchase': torch.from_numpy(u_perchase),
                 'u_feature': torch.from_numpy(u_feature),
                 'v_feature': torch.from_numpy(v_feature)}
+
+
+def random_split(dataset, lengths):
+    """
+    Randomly split a dataset into non-overlapping new datasets of given lengths.
+    Arguments:
+        dataset (Dataset): Dataset to be split
+        lengths (sequence): lengths of splits to be produced
+    """
+    if sum(lengths) != len(dataset):
+        raise ValueError("Sum of input lengths does not equal the length of the input dataset!")
+
+    indices = torch.randperm(sum(lengths)).tolist()
+    
+    return [Subset(dataset, indices[offset - length:offset]) for offset, length in zip(torch._utils._accumulate(lengths), lengths)]
