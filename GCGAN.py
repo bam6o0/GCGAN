@@ -7,7 +7,7 @@ from torchvision import transforms, utils
 
 import utils
 from dataloader import MovieLensDataset, ToTensor, random_split
-from network import generator, discriminator
+from network import generator, discriminator, Graph_discriminator
 
 
 class GCGAN(object):
@@ -51,19 +51,27 @@ class GCGAN(object):
         self.v_feature_num = dataset[0]['v_feature'].shape[1]
     
         # networks init
+        
         self.G = generator(input_dim=self.z_dim,
                             feature_num=self.u_feature_num,
                             output_dim=data.shape[0],
                             layer_num=self.Glayer_num,
                             hidden_num=self.Ghidden_num).to(self.device)
-
+        
+        self.D = Graph_discriminator(num_user=self.batch_size,
+                                num_item=data.shape[0],
+                                in_features_u=self.u_feature_num,
+                                in_features_v=self.v_feature_num,
+                                rating=5, hidden_num=self.Dhidden_num,
+                                output_dim=1).to(self.device)
+        '''
         self.D = discriminator(num_user=self.batch_size,
                                 num_item=data.shape[0],
                                 in_features_u=self.u_feature_num,
                                 in_features_v=self.v_feature_num,
                                 rating=5, hidden_num=self.Dhidden_num,
                                 output_dim=1).to(self.device)
-        
+        '''
         self.G_optimizer = optim.SGD(self.G.parameters(), lr=args.lrG)
         self.D_optimizer = optim.SGD(self.D.parameters(), lr=args.lrD)
         self.BCE_loss = nn.BCELoss().to(self.device)

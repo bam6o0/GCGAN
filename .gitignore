@@ -124,3 +124,5 @@ models
 *.ipynb_checkpoints
 *.ipynb
 notebook
+
+.DS_Store
