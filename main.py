@@ -11,8 +11,8 @@ if __name__ == '__main__':
                         help='The type of loss function')
     parser.add_argument('--dataset', type=str, default='ml_100k', choices=['ml_100k', 'ml_1m'],
                         help='The name of dataset')
-    parser.add_argument('--epochs', type=int, default=100, help='The number of epochs to run')
-    parser.add_argument('--batch_size', type=int, default=64, help='The size of batch')
+    parser.add_argument('--epochs', type=int, default=1000, help='The number of epochs to run')
+    parser.add_argument('--batch_size', type=int, default=32, help='The size of batch')
     parser.add_argument('--Glayer', type=int, default=3, help='Number of G hidden layer')
     parser.add_argument('--Ghidden', type=int, default=200, help='Number of G node on hidden layer')
     parser.add_argument('--Dhidden', type=int, default=200, help='Number of H node on hidden layer')

@@ -30,7 +30,7 @@ class generator(nn.Module):
         fc_in = nn.Linear(self.input_dim + self.feature_num, hidden_num)
         fc_hidden = nn.Linear(hidden_num, hidden_num)
         self.fc_out = nn.Linear(hidden_num, output_dim)
-        
+
         layer_list = []
         layer_list.append(fc_in)
         for _ in range(self.layer_num-2):
@@ -43,7 +43,7 @@ class generator(nn.Module):
         x = torch.cat([input, feature], 1)
         for f in self.layer_list:
             x = torch.sigmoid(f(x))
-        
+
         return self.fc_out(x)
 
 
@@ -70,7 +70,7 @@ class discriminator(nn.Module):
         self.bgc = BipertiteGraphConvolution(self.in_features_u, self.in_features_v, self.hidden_num, self.hidden_num, self.rating)
         self.bdense = BipertiteDense(self.hidden_num, self.hidden_num, 1, 1)
         self.fc = nn.Linear(num_user + num_item, self.output_dim)
-        
+
         utils.initialize_weights(self)
 
     def forward(self, adj, u_feature, v_feature):
@@ -79,7 +79,7 @@ class discriminator(nn.Module):
         x = torch.cat([x_u, x_v], 0)
         x = torch.transpose(x, 0, 1)
         x = self.fc(x)
-        
+
         return torch.sigmoid(x)
 
 
@@ -97,8 +97,8 @@ class Graph_discriminator(nn.Module):
 
         self.gc = GraphConvolution(self.in_features_u, self.in_features_v, self.hidden_num, self.hidden_num, self.rating)
         self.dense = Dense(self.hidden_num, self.hidden_num, 1, 1)
-        self.fc = nn.Linear(num_user , self.output_dim)
-        
+        self.fc = nn.Linear(num_user, self.output_dim)
+
         utils.initialize_weights(self)
 
     def forward(self, adj, u_feature, v_feature):
@@ -106,5 +106,5 @@ class Graph_discriminator(nn.Module):
         x = self.dense(x)
         x = torch.transpose(x, 0, 1)
         x = self.fc(x)
-        
+
         return torch.sigmoid(x)

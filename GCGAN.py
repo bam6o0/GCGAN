@@ -9,6 +9,8 @@ import utils
 from dataloader import MovieLensDataset, ToTensor, random_split
 from network import generator, discriminator, Graph_discriminator
 
+from sklearn.metrics import precision_score, recall_score
+
 
 class GCGAN(object):
     def __init__(self, args, device):
@@ -177,10 +179,27 @@ class GCGAN(object):
                 # Generate Fake Prechase Vector
                 fake_perchase = self.G(z_, u_feature)
 
+                # Top-N
+                #  Recommend
+                N = 20
+                # fake_perchase = torch.Size([189, 1682])
+                sorted, indices = torch.topk(fake_perchase, N)
+                true = real_perchase.gather(1, indices) > 3
+                
+                # label作成
+                pred = torch.ones(true.shape, device=self.device)
+
+                # Precision 
+                precision = precision_score(pred, true, average='samples')
+                
+                # Recall
+                recall = recall_score(pred, true, average='samples')
+                print("Top-N:{}\nPrecision:{}\nRecall:{}".format(N, precision, recall))
+                
+                # MSE & RMSE
                 # masking perchase vector
                 mask_r = (real_perchase > 0).float().to(self.device)
                 mask_f = (fake_perchase > 0).float().to(self.device)
-                
                 mse += self.MSE_loss(fake_perchase*mask_r, real_perchase*mask_f)
                 rmse += torch.sqrt(self.MSE_loss(fake_perchase*mask_r, real_perchase*mask_f))
 
@@ -206,6 +225,6 @@ class GCGAN(object):
     def load(self):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
 
-        self.G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_G.pkl')))
+        self.G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_G.pkl'), map_location=self.device))
         #elf.G.load_state_dict(torch.load('../CFGAN/models/ml_100k/CFGAN/CFGAN_G.pkl'))
-        self.D.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl')))
+        self.D.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl'), map_location=self.device))
