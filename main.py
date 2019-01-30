@@ -9,7 +9,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--loss_type', type=str, default='default', choices=['default', 'ZR', 'PM', 'ZP'],
                         help='The type of loss function')
-    parser.add_argument('--dataset', type=str, default='ml_100k', choices=['ml_100k', 'ml_1m'],
+    parser.add_argument('--dataset', type=str, default='ml-100k', choices=['ml-100k', 'ml-1m'],
                         help='The name of dataset')
     parser.add_argument('--epochs', type=int, default=1000, help='The number of epochs to run')
     parser.add_argument('--batch_size', type=int, default=32, help='The size of batch')

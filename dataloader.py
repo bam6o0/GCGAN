@@ -12,21 +12,13 @@ from torch.utils.data import Dataset, DataLoader, Subset
 class MovieLensDataset(Dataset):
     """MovieLens dataset."""
 
-    def __init__(self, dataset="ml_100k", transform=None, testing=False):
+    def __init__(self, dataset="ml-100k", transform=None, testing=False):
         """
         Loads official train/test split and uses 10% of training samples for validaiton
         For each split computes 1-of-num_classes labels. Also computes training
         adjacency matrix. Assumes flattening happens everywhere in row-major fashion.
         """
-        sep = '\t'
-
-        #check if file exist and download otherwise
-        files = ['/u1.base', '/u1.test', '/u.item', '/u.user']
-        fname = dataset
-        data_dir = 'data/' + fname
-
-        download_dataset(fname, files, data_dir)
-
+        
         dtypes = {
             'u_nodes': np.int32, 
             'v_nodes': np.int32,
@@ -34,23 +26,46 @@ class MovieLensDataset(Dataset):
             'timestanp': np.float32
         }
 
-        filename_train = 'data/' + dataset + '/u1.base'
-        filename_test = 'data/' + dataset + '/u1.test'
+        data_dir = 'data/' + dataset
 
-        data_train = pd.read_csv(
-            filename_train, sep=sep, header=None,
-            names=['u_nodes', 'v_nodes', 'raitings', 'timestamp'], dtype=dtypes)
-    
-        data_test = pd.read_csv(
-            filename_test, sep=sep, header=None,
-            names=['u_nodes', 'v_nodes', 'raitings', 'timestamp'], dtype=dtypes)
+        #check if file exist and download otherwise
+        # case of MovieLens 100k
+        if dataset == 'ml-100k':
+            files = ['/u1.base', '/u1.test', '/u.item', '/u.user']
+            download_dataset(dataset, files, data_dir)
 
-        data_array_train = data_train.values.tolist()
-        data_array_train = np.array(data_array_train)
-        data_array_test = data_test.values.tolist()
-        data_array_test = np.array(data_array_test)
+            filename_train = 'data/' + dataset + '/u1.base'
+            filename_test = 'data/' + dataset + '/u1.test'
 
-        data_array = np.concatenate([data_array_train, data_array_test], axis=0)
+            sep = '\t'
+            data_train = pd.read_csv(
+                filename_train, sep=sep, header=None,
+                names=['u_nodes', 'v_nodes', 'raitings', 'timestamp'], dtype=dtypes)
+        
+            data_test = pd.read_csv(
+                filename_test, sep=sep, header=None,
+                names=['u_nodes', 'v_nodes', 'raitings', 'timestamp'], dtype=dtypes)
+
+            data_array_train = data_train.values.tolist()
+            data_array_train = np.array(data_array_train)
+            data_array_test = data_test.values.tolist()
+            data_array_test = np.array(data_array_test)
+
+            data_array = np.concatenate([data_array_train, data_array_test], axis=0)
+
+        # case of MovieLens 1m
+        elif dataset == 'ml-1m':
+            files = ['/ratings.dat', '/movies.dat', '/users.dat']
+            download_dataset(dataset, files, data_dir)
+            filename = 'data/' + dataset + '/ratings.dat'
+
+            sep = '::'
+            data = pd.read_csv(
+                filename, sep=sep, header=None,
+                names=['u_nodes', 'v_nodes', 'raitings', 'timestamp'], dtype=dtypes, engine='python')
+            data_array = data.values.tolist()
+            data_array = np.array(data_array)
+
 
         u_nodes = data_array[:, 0].astype(dtypes['u_nodes'])
         v_nodes = data_array[:, 1].astype(dtypes['v_nodes'])
@@ -78,8 +93,8 @@ class MovieLensDataset(Dataset):
 
         # number of test and validation edges, see cf-node code
 
-        num_train = data_array_train.shape[0]
-        num_test = data_array_test.shape[0]
+        num_train = int(data_array.shape[0] * 0.8)
+        num_test = data_array.shape[0] - num_train
         num_val = int(np.ceil(num_train * 0.2))
         num_train = num_train - num_val
 
@@ -109,6 +124,7 @@ class MovieLensDataset(Dataset):
         train_idx = idx_nonzero[num_val:num_train + num_val]
         test_idx = idx_nonzero[num_train + num_val:]
 
+        print(len(test_idx))
         assert(len(test_idx) == num_test)
 
         val_pairs_idx = pairs_nonzero[0:num_val]
@@ -124,24 +140,15 @@ class MovieLensDataset(Dataset):
         val_labels = labels[val_idx]
         test_labels = labels[test_idx]
 
-        '''
-        if testing:
-            u_train_idx = np.hstack([u_train_idx, u_val_idx])
-            v_train_idx = np.hstack([v_train_idx, v_val_idx])
-            train_labels = np.hstack([train_labels, val_labels])
-            # for adjacency matrix construction
-            train_idx = np.hstack([train_idx, val_idx])
-        '''
     
         # make training adjacency matrix
         rating_mx_train = np.zeros(num_users * num_items, dtype=np.float32)
         rating_mx_train[train_idx] = labels[train_idx].astype(np.float32) + 1.
-        #rating_mx_train = sp.csr_matrix(rating_mx_train.reshape(num_users, num_items))
         rating_mx_train = rating_mx_train.reshape(num_users, num_items)
 
         class_values = np.sort(np.unique(ratings))
 
-        if dataset == 'ml_100k':
+        if dataset == 'ml-100k':
         
             # movie features (genres)
             sep = r'|'
@@ -193,7 +200,7 @@ class MovieLensDataset(Dataset):
                     u_features[u_dict[u_id], occupation_dict[row['occupation']]] = 1
 
 
-        elif dataset == 'ml_1m':
+        elif dataset == 'ml-1m':
 
             # load movie features
             movies_file = 'data/' + dataset + '/movies.dat'

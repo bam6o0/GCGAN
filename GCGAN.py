@@ -190,10 +190,10 @@ class GCGAN(object):
                 pred = torch.ones(true.shape, device=self.device)
 
                 # Precision 
-                precision = precision_score(pred, true, average='samples')
+                precision = precision_score(true, pred, average='samples')
                 
                 # Recall
-                recall = recall_score(pred, true, average='samples')
+                recall = recall_score(true, pred, average='samples')
                 print("Top-N:{}\nPrecision:{}\nRecall:{}".format(N, precision, recall))
                 
                 # MSE & RMSE

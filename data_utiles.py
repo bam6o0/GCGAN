@@ -16,15 +16,11 @@ def download_dataset(dataset, files, data_dir):
     Downloads dataset if files are not present.
     """
     if not np.all([os.path.isfile('./' + data_dir + f) for f in files]):
-        url =  "http://files.grouplens.org/datasets/movielens/" + dataset.replace('_', '-') + '.zip'
+        url =  "http://files.grouplens.org/datasets/movielens/" + dataset+ '.zip'
         request = urllib.request.urlopen(url=url)
-
         print('Downloading {} dataset from {}'.format(dataset, url))
-        if dataset in ['ml_100k', 'ml_1m']:
-            target_dir = 'data/' + dataset.replace('_', '-')
-            
-        elif dataset == 'ml_10m':
-            target_dir = 'data/' + 'ml-10M'
+        if dataset in ['ml-100k', 'ml-1m', 'ml-10m']:
+            target_dir = 'data/' + dataset
         else:
             raise ValueError('Invalid dataset option %s' % dataset)
 
