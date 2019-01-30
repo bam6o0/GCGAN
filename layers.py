@@ -128,3 +128,4 @@ class Dense(nn.Module):
         output = torch.mm(u_feature, self.weight)
 
         return F.relu(output)
+        

@@ -179,22 +179,28 @@ class GCGAN(object):
                 # Generate Fake Prechase Vector
                 fake_perchase = self.G(z_, u_feature)
 
-                # Top-N
-                #  Recommend
-                N = 20
-                # fake_perchase = torch.Size([189, 1682])
-                sorted, indices = torch.topk(fake_perchase, N)
-                true = real_perchase.gather(1, indices) > 3
-                
-                # label作成
-                pred = torch.ones(true.shape, device=self.device)
-
-                # Precision 
-                precision = precision_score(true, pred, average='samples')
-                
-                # Recall
-                recall = recall_score(true, pred, average='samples')
-                print("Top-N:{}\nPrecision:{}\nRecall:{}".format(N, precision, recall))
+                # Top-N Recommend
+                for N in [5, 15, 20, 50, 100]:
+                    # fake_perchase = torch.Size([189, 1682])
+                    mask = (fake_perchase <= 5).float().to(self.device)
+                    fake_perchase = fake_perchase*mask
+                    #欠損値を取り除く
+                    #mask = (real_perchase > 0).float().to(self.device)
+                    #fake_perchase = fake_perchase*mask
+                    sorted, indices = torch.topk(fake_perchase, N)
+                    # しきい値でバイナリ化
+                    #true = real_perchase.gather(1, indices) > 3
+                    true = real_perchase.gather(1, indices)
+                    mask = (true > 0).float().to(self.device)
+                    pred = (sorted*true) > 3
+                    true = true > 3
+                    # Precision 
+                    precision = precision_score(true, pred, average='macro')
+                    # Recall
+                    recall = recall_score(true, pred, average='macro')
+                    print("Top-N:{}\nPrecision:{}\nRecall:{}".format(N, precision, recall))
+                    utils.predict_plot(true.cpu().numpy(), os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name+'_true@'+str(N))
+                    utils.predict_plot(pred.cpu().numpy(), os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name+'_pred@'+str(N))
                 
                 # MSE & RMSE
                 # masking perchase vector

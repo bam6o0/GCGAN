@@ -79,7 +79,6 @@ class MovieLensDataset(Dataset):
         v_nodes = v_nodes.astype(np.int64)
         ratings = ratings.astype(np.float64)
 
-
         rating_dict = {r: i for i, r in enumerate(np.sort(np.unique(ratings)))}
    
         # neutral_rating = -1
@@ -107,44 +106,27 @@ class MovieLensDataset(Dataset):
         idx_nonzero_train = idx_nonzero[0:num_train+num_val]
         idx_nonzero_test = idx_nonzero[num_train+num_val:]
 
-        pairs_nonzero_train = pairs_nonzero[0:num_train+num_val]
-        pairs_nonzero_test = pairs_nonzero[num_train+num_val:]
 
         # Internally shuffle training set (before splitting off validation set)
         rand_idx = list(range(len(idx_nonzero_train)))
         np.random.seed(42)
         np.random.shuffle(rand_idx)
         idx_nonzero_train = idx_nonzero_train[rand_idx]
-        pairs_nonzero_train = pairs_nonzero_train[rand_idx]
 
         idx_nonzero = np.concatenate([idx_nonzero_train, idx_nonzero_test], axis=0)
-        pairs_nonzero = np.concatenate([pairs_nonzero_train, pairs_nonzero_test], axis=0)
 
         val_idx = idx_nonzero[0:num_val]
         train_idx = idx_nonzero[num_val:num_train + num_val]
         test_idx = idx_nonzero[num_train + num_val:]
 
-        print(len(test_idx))
         assert(len(test_idx) == num_test)
 
-        val_pairs_idx = pairs_nonzero[0:num_val]
-        train_pairs_idx = pairs_nonzero[num_val:num_train + num_val]
-        test_pairs_idx = pairs_nonzero[num_train + num_val:]
-
-        u_test_idx, v_test_idx = test_pairs_idx.transpose()
-        u_val_idx, v_val_idx = val_pairs_idx.transpose()
-        u_train_idx, v_train_idx = train_pairs_idx.transpose()
-
-        # create labels
-        train_labels = labels[train_idx]
-        val_labels = labels[val_idx]
-        test_labels = labels[test_idx]
-
-    
-        # make training adjacency matrix
-        rating_mx_train = np.zeros(num_users * num_items, dtype=np.float32)
-        rating_mx_train[train_idx] = labels[train_idx].astype(np.float32) + 1.
-        rating_mx_train = rating_mx_train.reshape(num_users, num_items)
+        # make adjacency matrix
+        rating_mx = np.zeros(num_users * num_items, dtype=np.float32)
+        rating_mx[train_idx] = labels[train_idx].astype(np.float32) + 1.
+        rating_mx[test_idx] = labels[test_idx].astype(np.float32) + 1.
+        rating_mx[val_idx] = labels[val_idx].astype(np.float32) + 1.
+        rating_mx = rating_mx.reshape(num_users, num_items)
 
         class_values = np.sort(np.unique(ratings))
 
@@ -259,25 +241,12 @@ class MovieLensDataset(Dataset):
             raise ValueError('Invalid dataset option %s' % dataset)
 
 
-
-        #u_features = sp.csr_matrix(u_features)
-        #v_features = sp.csr_matrix(v_features)
-
         print("User features shape: "+str(u_features.shape))
         print("Item features shape: "+str(v_features.shape))
 
         self.u_features = u_features 
         self.v_features = v_features
-        self.adj_matraix = rating_mx_train
-        self.train_labels = train_labels
-        self.u_train_idx = u_train_idx
-        self.v_train_idx = v_train_idx
-        self.val_labels = val_labels
-        self.u_val_idx = u_val_idx
-        self.v_val_idx = v_val_idx
-        self.test_labels = test_labels
-        self.u_test_idx = u_test_idx
-        self.v_test_idx = v_test_idx
+        self.adj_matraix = rating_mx
         self.class_values = class_values
         self.transform = transform
         
