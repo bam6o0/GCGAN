@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 from torch.nn.modules.module import Module
 
-
+'''
 class BipertiteGraphConvolution(nn.Module):
     """Graph convolution layer for bipartite graphs"""
     def __init__(self, in_features_u, in_features_v, out_features_u, out_features_v, rating):
@@ -35,9 +35,8 @@ class BipertiteGraphConvolution(nn.Module):
             output_v = output_v + torch.mm(torch.mm(torch.mm(D_v, M_r_t[i]), u_feature), self.weight_v[i])
             
         return F.relu(output_u), F.relu(output_v)
-
-
-
+'''
+'''
 class BipertiteDense(nn.Module):
     """Dense layer for two types of nodes in a bipartite graph. """
     def __init__(self, in_features_u, in_features_v, out_features_u, out_features_v):
@@ -53,8 +52,7 @@ class BipertiteDense(nn.Module):
         output_v = torch.mm(v_feature, self.weight_v)
 
         return F.relu(output_u), F.relu(output_v)
-
-
+'''
 
 '''
 class GraphConvolution(nn.Module):
@@ -97,7 +95,7 @@ class GraphConvolution(nn.Module):
         return F.relu(output)
 
 '''
-
+'''
 class GraphConvolution(nn.Module):
     """Graph convolution layer for bipartite graphs"""
     def __init__(self, in_features_u, in_features_v, out_features_u, out_features_v, rating):
@@ -115,7 +113,8 @@ class GraphConvolution(nn.Module):
             
         return F.relu(output)
 
-
+'''
+'''
 class Dense(nn.Module):
     """Dense layer for two types of nodes in a bipartite graph. """
     def __init__(self, in_features_u, in_features_v, out_features_u, out_features_v):
@@ -128,4 +127,30 @@ class Dense(nn.Module):
         output = torch.mm(u_feature, self.weight)
 
         return F.relu(output)
-        
+'''
+
+
+class BipertiteGraphConvolution(nn.Module):
+    """Graph convolution layer for bipartite graphs"""
+    def __init__(self, in_features_u, in_features_v, out_features_u, out_features_v, rating):
+        super(BipertiteGraphConvolution, self).__init__()
+        self.rating = rating
+        self.weight_u = nn.Parameter(torch.Tensor(in_features_v, out_features_u))
+        self.weight_v = nn.Parameter(torch.Tensor(in_features_u, out_features_v))
+
+        self.weight_u.data.normal_(0, 0.02)
+        self.weight_v.data.normal_(0, 0.02)
+    
+    def forward(self, perchase, u_feature, v_feature):
+        perchase_t = torch.transpose(perchase, 0, 1)
+        D_u = torch.diag(torch.reciprocal(torch.sum(perchase > 0, dim=1, dtype=torch.float)))
+        D_u_t = torch.diag(torch.reciprocal(torch.sum(perchase_t > 0, dim=1, dtype=torch.float)))
+        D_u[D_u == float("Inf")] = 0
+        D_u_t[D_u_t == float("Inf")] = 0
+
+        #(1*N_v)*(N_v*D_v)*(D_v*D_u) = (1*D_u)
+        hidden_u = torch.mm(torch.mm(torch.mm(D_u, perchase), v_feature), self.weight_u)
+        #(N_v*1)*(1*D_u)*(D_u*D_v) = (N_v*D_v)
+        hidden_v = torch.mm(torch.mm(torch.mm(D_u_t, perchase_t), u_feature), self.weight_v)
+            
+        return F.leaky_relu(hidden_u), F.leaky_relu(hidden_v)

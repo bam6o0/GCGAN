@@ -1,9 +1,10 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 import utils
-from layers import BipertiteDense, BipertiteGraphConvolution, GraphConvolution, Dense
+from layers import BipertiteGraphConvolution
 
 '''
 Generator Code
@@ -18,6 +19,7 @@ output_dim      purchase vector dim
 
 ------------------------------------------
 '''
+
 class generator(nn.Module):
     def __init__(self, input_dim=100, feature_num=10, output_dim=10, layer_num=2, hidden_num=100):
         super(generator, self).__init__()
@@ -47,6 +49,7 @@ class generator(nn.Module):
         return self.fc_out(x)
 
 
+
 '''
 Discriminator Code
 -----------------------------------------
@@ -57,6 +60,7 @@ layer_num           number of hidden layer
 hidden_num          number of node on hidden layer
 output_dim          real or fake
 ------------------------------------------
+'''
 '''
 class discriminator(nn.Module):
     def __init__(self, num_user, num_item, in_features_u, in_features_v, rating, hidden_num=100, output_dim=1):
@@ -81,11 +85,11 @@ class discriminator(nn.Module):
         x = self.fc(x)
 
         return torch.sigmoid(x)
-
+'''
 
 #-----------------------------------------------------------------
 
-
+'''
 class Graph_discriminator(nn.Module):
     def __init__(self, num_user, num_item, in_features_u, in_features_v, rating, hidden_num=100, output_dim=1):
         super(Graph_discriminator, self).__init__()
@@ -107,4 +111,36 @@ class Graph_discriminator(nn.Module):
         x = torch.transpose(x, 0, 1)
         x = self.fc(x)
 
+        return torch.sigmoid(x)
+'''
+
+class discriminator(nn.Module):
+    def __init__(self, num_user, num_item, in_features_u, in_features_v, rating, hidden_num=100, output_dim=1):
+        super(discriminator, self).__init__()
+        self.in_features_u = in_features_u
+        self.in_features_v = in_features_v
+        self.output_dim = output_dim
+        self.hidden_num = hidden_num
+        self.rating = rating
+
+        self.bgc1 = BipertiteGraphConvolution(in_features_u=self.in_features_u, 
+                                            in_features_v=self.in_features_v, 
+                                            out_features_u=12, 
+                                            out_features_v=9, 
+                                            rating=self.rating)
+        self.bgc2 = BipertiteGraphConvolution(in_features_u=12, 
+                                            in_features_v=9, 
+                                            out_features_u=3, 
+                                            out_features_v=1, 
+                                            rating=self.rating)
+        self.fc = nn.Linear(3, self.output_dim)
+
+        utils.initialize_weights(self)
+
+    def forward(self, adj, u_feature, v_feature):
+        x_u, x_v = self.bgc1(adj, u_feature, v_feature)
+        x_u, x_v = self.bgc2(adj, x_u, x_v)
+        #x = torch.cat([x_u, x_v], 0)
+        #x = torch.transpose(x_v, 0, 1)
+        x = self.fc(x_u)
         return torch.sigmoid(x)

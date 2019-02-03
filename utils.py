@@ -41,6 +41,28 @@ def loss_plot(hist, path = 'Train_hist.png', model_name = ''):
 
     plt.close()
 
+def valid_plot(hist, path = 'Train_hist.png', model_name = ''):
+    x = range(len(hist['precision']))
+
+    y1 = hist['precision']
+    y2 = hist['recall']
+
+    plt.plot(x, y1, label='precision')
+    plt.plot(x, y2, label='recall')
+
+    plt.xlabel('epochs')
+    plt.ylabel('precision-recall')
+
+    plt.legend(loc=4)
+    plt.grid(True)
+    plt.tight_layout()
+
+    path = os.path.join(path, model_name + '_precision-recall.png')
+
+    plt.savefig(path)
+
+    plt.close()
+
 def predict_plot(matrix, path, model_name=''):
     plt.figure(figsize=(25, 15)) 
     sns.heatmap(matrix)

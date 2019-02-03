@@ -7,7 +7,7 @@ from torchvision import transforms, utils
 
 import utils
 from dataloader import MovieLensDataset, ToTensor, random_split
-from network import generator, discriminator, Graph_discriminator
+from network import generator, discriminator
 
 from sklearn.metrics import precision_score, recall_score
 
@@ -59,7 +59,7 @@ class GCGAN(object):
                             output_dim=data.shape[0],
                             layer_num=self.Glayer_num,
                             hidden_num=self.Ghidden_num).to(self.device)
-        
+        '''
         self.D = Graph_discriminator(num_user=self.batch_size,
                                 num_item=data.shape[0],
                                 in_features_u=self.u_feature_num,
@@ -73,7 +73,7 @@ class GCGAN(object):
                                 in_features_v=self.v_feature_num,
                                 rating=5, hidden_num=self.Dhidden_num,
                                 output_dim=1).to(self.device)
-        '''
+        
         self.G_optimizer = optim.SGD(self.G.parameters(), lr=args.lrG)
         self.D_optimizer = optim.SGD(self.D.parameters(), lr=args.lrD)
         self.BCE_loss = nn.BCELoss().to(self.device)
@@ -93,11 +93,13 @@ class GCGAN(object):
         self.train_hist['G_loss'] = []
         self.train_hist['per_epoch_time'] = []
         self.train_hist['total_time'] = []
+        self.train_hist['precision'] = []
+        self.train_hist['recall'] = []
 
         self.D.train()
         start_time = time.time()
-        y_real_ = torch.ones(1, 1).to(self.device)
-        y_fake_ = torch.zeros(1, 1).to(self.device)
+        y_real_ = torch.ones(self.batch_size, 1).to(self.device)
+        y_fake_ = torch.zeros(self.batch_size, 1).to(self.device)
 
         for epoch in range(self.epoch):
             self.G.train()
@@ -146,8 +148,46 @@ class GCGAN(object):
                 if ((iter + 1) % 10) == 0:
                     print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
                         ((epoch + 1), (iter + 1), self.train_loader.dataset.__len__() // self.batch_size, D_loss.item(), G_loss.item()))
-                    print(torch.min(G__perchase), torch.max(G__perchase))
-                    
+            
+                    #print(torch.min(G__perchase), torch.max(G__perchase))
+            
+            # ---------validation -----------------------------------------
+            self.G.eval()
+            with torch.no_grad():
+                for iter, sample in enumerate(self.test_loader):
+                    if iter == self.test_loader.dataset.__len__() // self.batch_size:
+                        break
+
+                    real_perchase = sample['u_perchase'].to(self.device)
+                    u_feature = sample['u_feature'].to(self.device)
+                    z_ = torch.zeros(0, 0).to(self.device)
+
+                    # Generate Fake Prechase Vector
+                    fake_perchase = self.G(z_, u_feature)
+                    # Top-N Recommend
+                    for N in [5, 20]:
+                        # fake_perchase = torch.Size([189, 1682])
+                        #mask = (fake_perchase <= 5).float().to(self.device)
+                        #fake_perchase = fake_perchase*mask
+                        #欠損値を取り除く
+                        #mask = (real_perchase > 0).float().to(self.device)
+                        #fake_perchase = fake_perchase*mask
+                        sorted, indices = torch.topk(fake_perchase, N)
+                        # しきい値でバイナリ化
+                        #true = real_perchase.gather(1, indices) > 3
+                        true = real_perchase.gather(1, indices)
+                        mask = (true > 0).float().to(self.device)
+                        pred = (sorted*true) > 3
+                        true = true > 3
+                        # Precision 
+                        precision = precision_score(true, pred, average='macro')
+                        # Recall
+                        recall = recall_score(true, pred, average='macro')
+                        print("Top-N:{} Precision:{} Recall:{}".format(N, precision, recall))
+
+            self.train_hist['precision'].append(precision)
+            self.train_hist['recall'].append(recall)
+            #----------validation -----------------------------------------
 
             self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
 
@@ -156,10 +196,9 @@ class GCGAN(object):
                 self.epoch, self.train_hist['total_time'][0]))
 
         utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
+        utils.valid_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
         self.save()
     
-    def valid(self):
-        pass
 
     # Evaluation
     def eval(self):
@@ -178,12 +217,11 @@ class GCGAN(object):
 
                 # Generate Fake Prechase Vector
                 fake_perchase = self.G(z_, u_feature)
-
                 # Top-N Recommend
-                for N in [5, 15, 20, 50, 100]:
+                for N in [5, 20]:
                     # fake_perchase = torch.Size([189, 1682])
-                    mask = (fake_perchase <= 5).float().to(self.device)
-                    fake_perchase = fake_perchase*mask
+                    #mask = (fake_perchase <= 5).float().to(self.device)
+                    #fake_perchase = fake_perchase*mask
                     #欠損値を取り除く
                     #mask = (real_perchase > 0).float().to(self.device)
                     #fake_perchase = fake_perchase*mask
@@ -193,6 +231,7 @@ class GCGAN(object):
                     true = real_perchase.gather(1, indices)
                     mask = (true > 0).float().to(self.device)
                     pred = (sorted*true) > 3
+                    utils.predict_plot(pred.cpu().numpy(), os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name+'_pred_nomask@'+str(N))
                     true = true > 3
                     # Precision 
                     precision = precision_score(true, pred, average='macro')
@@ -201,6 +240,7 @@ class GCGAN(object):
                     print("Top-N:{}\nPrecision:{}\nRecall:{}".format(N, precision, recall))
                     utils.predict_plot(true.cpu().numpy(), os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name+'_true@'+str(N))
                     utils.predict_plot(pred.cpu().numpy(), os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name+'_pred@'+str(N))
+                return precision, recall
                 
                 # MSE & RMSE
                 # masking perchase vector
