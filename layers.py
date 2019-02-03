@@ -144,13 +144,13 @@ class BipertiteGraphConvolution(nn.Module):
     def forward(self, perchase, u_feature, v_feature):
         perchase_t = torch.transpose(perchase, 0, 1)
         D_u = torch.diag(torch.reciprocal(torch.sum(perchase > 0, dim=1, dtype=torch.float)))
-        D_u_t = torch.diag(torch.reciprocal(torch.sum(perchase_t > 0, dim=1, dtype=torch.float)))
+        D_v = torch.diag(torch.reciprocal(torch.sum(perchase_t > 0, dim=1, dtype=torch.float)))
         D_u[D_u == float("Inf")] = 0
-        D_u_t[D_u_t == float("Inf")] = 0
+        D_v[D_v == float("Inf")] = 0
 
         #(1*N_v)*(N_v*D_v)*(D_v*D_u) = (1*D_u)
         hidden_u = torch.mm(torch.mm(torch.mm(D_u, perchase), v_feature), self.weight_u)
         #(N_v*1)*(1*D_u)*(D_u*D_v) = (N_v*D_v)
-        hidden_v = torch.mm(torch.mm(torch.mm(D_u_t, perchase_t), u_feature), self.weight_v)
+        hidden_v = torch.mm(torch.mm(torch.mm(D_v, perchase_t), u_feature), self.weight_v)
             
         return F.relu(hidden_u), F.relu(hidden_v)

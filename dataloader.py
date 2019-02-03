@@ -186,7 +186,7 @@ class MovieLensDataset(Dataset):
 
             # load movie features
             movies_file = 'data/' + dataset + '/movies.dat'
-
+            sep = r'::'
             movies_headers = ['movie_id', 'title', 'genre']
             movies_df = pd.read_csv(movies_file, sep=sep, header=None,
                                 names=movies_headers, engine='python')
@@ -196,7 +196,7 @@ class MovieLensDataset(Dataset):
             for s in movies_df['genre'].values:
                 genres.extend(s.split('|'))
 
-            enres = list(set(genres))
+            genres = list(set(genres))
             num_genres = len(genres)
 
             genres_dict = {g: idx for idx, g in enumerate(genres)}
@@ -211,11 +211,34 @@ class MovieLensDataset(Dataset):
                         v_features[v_dict[movie_id], genres_dict[g]] = 1.
 
             # load user features
+            sep = r'::'
             users_file = 'data/' + dataset + '/users.dat'
             users_headers = ['user_id', 'gender', 'age', 'occupation', 'zip-code']
             users_df = pd.read_csv(users_file, sep=sep, header=None,
                                    names=users_headers, engine='python')
+                                   
+            
+            occupation = set(users_df['occupation'].values.tolist())
 
+            age = users_df['age'].values
+            age_max = age.max()
+
+            gender_dict = {'M': 0., 'F': 1.}
+            occupation_dict = {f: i for i, f in enumerate(occupation, start=2)}
+
+            num_feats = 2 + len(occupation_dict)
+
+            u_features = np.zeros((num_users, num_feats), dtype=np.float32)
+            for _, row in users_df.iterrows():
+                u_id = row['user_id']
+                if u_id in u_dict.keys():
+                    # age
+                    u_features[u_dict[u_id], 0] = row['age'] / np.float(age_max)
+                    # gender
+                    u_features[u_dict[u_id], 1] = gender_dict[row['gender']]
+                    # occupation
+                    u_features[u_dict[u_id], occupation_dict[row['occupation']]] = 1
+            '''
             # extracting all features
             cols = users_df.columns.values[1:]
 
@@ -236,7 +259,8 @@ class MovieLensDataset(Dataset):
                 if u_id in u_dict.keys():
                     for k, header in enumerate(cols):
                         u_features[u_dict[u_id], feat_dicts[k][row[header]]] = 1.
-                        
+            '''
+
         else:
             raise ValueError('Invalid dataset option %s' % dataset)
 

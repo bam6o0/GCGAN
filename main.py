@@ -33,8 +33,8 @@ if __name__ == '__main__':
     gan = GCGAN(args, device)
 
     # launch the graph in a session
-    #gan.train()
-    #print(" [*] Training finished!")
+    gan.train()
+    print(" [*] Training finished!")
     gan.eval()
     print(" [*] Testing finished!")
     print(args)
