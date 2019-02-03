@@ -153,4 +153,4 @@ class BipertiteGraphConvolution(nn.Module):
         #(N_v*1)*(1*D_u)*(D_u*D_v) = (N_v*D_v)
         hidden_v = torch.mm(torch.mm(torch.mm(D_u_t, perchase_t), u_feature), self.weight_v)
             
-        return F.leaky_relu(hidden_u), F.leaky_relu(hidden_v)
+        return F.relu(hidden_u), F.relu(hidden_v)

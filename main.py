@@ -14,8 +14,8 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=500, help='The number of epochs to run')
     parser.add_argument('--batch_size', type=int, default=32, help='The size of batch')
     parser.add_argument('--Glayer', type=int, default=3, help='Number of G hidden layer')
-    parser.add_argument('--Ghidden', type=int, default=200, help='Number of G node on hidden layer')
-    parser.add_argument('--Dhidden', type=int, default=200, help='Number of H node on hidden layer')
+    parser.add_argument('--Ghidden', type=int, default=500, help='Number of G node on hidden layer')
+    parser.add_argument('--z_dim', type=int, default=100, help='Number of noise dimension')
     parser.add_argument('--lrG', type=float, default=0.005)
     parser.add_argument('--lrD', type=float, default=0.005)
     parser.add_argument('--save_dir', type=str, default='models', help='Directory name to save the model')
@@ -33,8 +33,8 @@ if __name__ == '__main__':
     gan = GCGAN(args, device)
 
     # launch the graph in a session
-    gan.train()
-    print(" [*] Training finished!")
+    #gan.train()
+    #print(" [*] Training finished!")
     gan.eval()
     print(" [*] Testing finished!")
     print(args)

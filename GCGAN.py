@@ -2,6 +2,7 @@ import torch, time, os, pickle
 import numpy as np
 import torch.nn as nn
 import torch.optim as optim
+from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision import transforms, utils
 
@@ -25,8 +26,7 @@ class GCGAN(object):
         self.model_name = "GCGAN"
         self.Glayer_num = args.Glayer
         self.Ghidden_num = args.Ghidden
-        self.Dhidden_num = args.Dhidden
-        self.z_dim = 0
+        self.z_dim = args.z_dim
         self.num_worker = args.num_worker
         self.device = device
 
@@ -59,20 +59,13 @@ class GCGAN(object):
                             output_dim=data.shape[0],
                             layer_num=self.Glayer_num,
                             hidden_num=self.Ghidden_num).to(self.device)
-        '''
-        self.D = Graph_discriminator(num_user=self.batch_size,
+
+        self.D = discriminator(in_features_u=self.u_feature_num,
                                 num_item=data.shape[0],
-                                in_features_u=self.u_feature_num,
                                 in_features_v=self.v_feature_num,
-                                rating=5, hidden_num=self.Dhidden_num,
+                                rating=5,
                                 output_dim=1).to(self.device)
-        '''
-        self.D = discriminator(num_user=self.batch_size,
-                                num_item=data.shape[0],
-                                in_features_u=self.u_feature_num,
-                                in_features_v=self.v_feature_num,
-                                rating=5, hidden_num=self.Dhidden_num,
-                                output_dim=1).to(self.device)
+        
         
         self.G_optimizer = optim.SGD(self.G.parameters(), lr=args.lrG)
         self.D_optimizer = optim.SGD(self.D.parameters(), lr=args.lrD)
@@ -112,7 +105,8 @@ class GCGAN(object):
                 perchase = sample['u_perchase'].to(self.device)
                 u_feature = sample['u_feature'].to(self.device)
                 v_feature = sample['v_feature'].to(self.device)
-                z_ = torch.zeros(0, 0).to(self.device)
+                #z_ = torch.zeros(0, 0).to(self.device)
+                z_ = Variable(torch.FloatTensor(np.random.normal(0, 1, (self.batch_size, self.z_dim)))).to(self.device)
                 # masking fake perchase vector
                 mask = (perchase > 0).float().to(self.device)
 
@@ -144,12 +138,10 @@ class GCGAN(object):
                 self.G_optimizer.step()
                 # -----------------update G network------------------------
 
-                # -----------------output status---------------------------
-                if ((iter + 1) % 10) == 0:
-                    print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
-                        ((epoch + 1), (iter + 1), self.train_loader.dataset.__len__() // self.batch_size, D_loss.item(), G_loss.item()))
+            # -----------------output status---------------------------  
+            print("Epoch: [%2d] D_loss: %.8f, G_loss: %.8f" %
+                    ((epoch + 1), D_loss.item(), G_loss.item()))
             
-                    #print(torch.min(G__perchase), torch.max(G__perchase))
             
             # ---------validation -----------------------------------------
             self.G.eval()
@@ -160,7 +152,8 @@ class GCGAN(object):
 
                     real_perchase = sample['u_perchase'].to(self.device)
                     u_feature = sample['u_feature'].to(self.device)
-                    z_ = torch.zeros(0, 0).to(self.device)
+                    #z_ = torch.zeros(0, 0).to(self.device)
+                    z_ = Variable(torch.FloatTensor(np.random.normal(0, 1, (self.test_loader.dataset.__len__(), self.z_dim)))).to(self.device)
 
                     # Generate Fake Prechase Vector
                     fake_perchase = self.G(z_, u_feature)
@@ -213,12 +206,13 @@ class GCGAN(object):
 
                 real_perchase = sample['u_perchase'].to(self.device)
                 u_feature = sample['u_feature'].to(self.device)
-                z_ = torch.zeros(0, 0).to(self.device)
+                #z_ = torch.zeros(0, 0).to(self.device)
+                z_ = Variable(torch.FloatTensor(np.random.normal(0, 1, (self.test_loader.dataset.__len__(), self.z_dim)))).to(self.device)
 
                 # Generate Fake Prechase Vector
                 fake_perchase = self.G(z_, u_feature)
                 # Top-N Recommend
-                for N in [5, 20]:
+                for N in [5, 15, 20, 50, 100]:
                     # fake_perchase = torch.Size([189, 1682])
                     #mask = (fake_perchase <= 5).float().to(self.device)
                     #fake_perchase = fake_perchase*mask
