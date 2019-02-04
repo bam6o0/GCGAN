@@ -22,7 +22,6 @@ class GCGAN(object):
         self.result_dir = args.result_dir
         self.dataset = args.dataset
         self.log_dir = args.log_dir
-        self.gpu_mode = args.gpu_mode
         self.model_name = "GCGAN"
         self.Glayer_num = args.Glayer
         self.Ghidden_num = args.Ghidden
