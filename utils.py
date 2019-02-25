@@ -41,17 +41,19 @@ def loss_plot(hist, path = 'Train_hist.png', model_name = ''):
 
     plt.close()
 
+
 def valid_plot(hist, path = 'Train_hist.png', model_name = ''):
     x = range(len(hist['precision']))
 
     y1 = hist['precision']
-    y2 = hist['recall']
+    #y2 = hist['recall']
 
     plt.plot(x, y1, label='precision')
-    plt.plot(x, y2, label='recall')
+    #plt.plot(x, y2, label='recall')
 
     plt.xlabel('epochs')
-    plt.ylabel('precision-recall')
+    #plt.ylabel('precision-recall')
+    plt.ylabel('precision')
 
     plt.legend(loc=4)
     plt.grid(True)
@@ -83,3 +85,4 @@ def initialize_weights(net):
             #m.weight.data.xavier_normal_()
             torch.nn.init.xavier_normal_(m.weight)
             m.bias.data.zero_()
+

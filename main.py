@@ -9,9 +9,10 @@ if __name__ == '__main__':
 
     parser.add_argument('--dataset', type=str, default='ml-100k', choices=['ml-100k', 'ml-1m'],
                         help='The name of dataset')
-    parser.add_argument('--epochs', type=int, default=500, help='The number of epochs to run')
-    parser.add_argument('--batch_size', type=int, default=64, help='The size of batch')
+    parser.add_argument('--epochs', type=int, default=100, help='The number of epochs to run')
+    parser.add_argument('--batch_size', type=int, default=128, help='The size of batch')
     parser.add_argument('--Glayer', type=int, default=3, help='Number of G hidden layer')
+    parser.add_argument('--Dlayer', type=int, default=4, help='Number of D hidden layer')
     parser.add_argument('--Ghidden', type=int, default=500, help='Number of G node on hidden layer')
     parser.add_argument('--z_dim', type=int, default=100, help='Number of noise dimension')
     parser.add_argument('--lrG', type=float, default=0.005)
