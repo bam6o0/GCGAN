@@ -3,7 +3,7 @@ astor==0.7.1
 astroid==2.0.4
 attrs==18.2.0
 backcall==0.1.0
-bleach==3.0.0
+bleach==3.1.4
 certifi==2018.8.24
 chainer==4.4.0
 chardet==3.0.4
